@@ -1,6 +1,5 @@
 const { MercadoPagoConfig, Preference } = require('mercadopago');
 
-// Lista de produtos do seu cardápio com preços oficiais
 const PRODUCTS_DB = {
   tradicional: { name: "Brigadeiro Tradicional", price: 3.50 },
   nozes: { name: "Brigadeiro de Nozes", price: 3.50 },
@@ -10,21 +9,21 @@ const PRODUCTS_DB = {
 };
 
 exports.handler = async (event) => {
+  const headers = {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS'
+  };
+
   if (event.httpMethod === 'OPTIONS') {
-    return {
-      statusCode: 200,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS'
-      },
-      body: ''
-    };
+    return { statusCode: 200, headers, body: JSON.stringify({ ok: true }) };
   }
 
   if (event.httpMethod !== 'POST') {
     return {
       statusCode: 405,
+      headers,
       body: JSON.stringify({ error: 'Método não permitido' })
     };
   }
@@ -32,7 +31,11 @@ exports.handler = async (event) => {
   try {
     const token = process.env.MERCADOPAGO_ACCESS_TOKEN;
     if (!token) {
-      throw new Error('MERCADOPAGO_ACCESS_TOKEN não está configurado nas variáveis de ambiente.');
+      return {
+        statusCode: 500,
+        headers,
+        body: JSON.stringify({ error: 'Variável MERCADOPAGO_ACCESS_TOKEN não configurada no Netlify.' })
+      };
     }
 
     const client = new MercadoPagoConfig({ accessToken: token });
@@ -44,15 +47,15 @@ exports.handler = async (event) => {
     if (!items || !Array.isArray(items) || items.length === 0) {
       return {
         statusCode: 400,
-        body: JSON.stringify({ error: 'Carrinho vazio.' })
+        headers,
+        body: JSON.stringify({ error: 'Carrinho vazio ou formato inválido.' })
       };
     }
 
-    // Monta os itens validando os preços do lado do servidor
     const mpItems = items.map((item) => {
       const product = PRODUCTS_DB[item.productId];
       if (!product) {
-        throw new Error(`Produto inválido: ${item.productId}`);
+        throw new Error(`Produto não cadastrado: ${item.productId}`);
       }
       return {
         id: item.productId,
@@ -68,9 +71,7 @@ exports.handler = async (event) => {
         items: mpItems,
         payer: {
           name: customer?.name || '',
-          phone: {
-            number: customer?.phone || ''
-          }
+          phone: { number: customer?.phone || '' }
         },
         metadata: {
           delivery_type: customer?.deliveryType,
@@ -84,10 +85,7 @@ exports.handler = async (event) => {
 
     return {
       statusCode: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*'
-      },
+      headers,
       body: JSON.stringify({ init_point: result.init_point })
     };
 
@@ -95,7 +93,8 @@ exports.handler = async (event) => {
     console.error('Erro na Netlify Function:', error);
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: error.message || 'Erro ao criar preferência de pagamento.' })
+      headers,
+      body: JSON.stringify({ error: error.message || 'Erro interno no servidor de pagamento.' })
     };
   }
 };
