@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-javascript@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <title>Doce Graça | Cardápio</title>
     <meta
@@ -1572,879 +1572,898 @@
     </div>
 
     <script>
-            /* =========================
-             PRODUTOS
-          ========================= */
-            const supabaseUrl = https://lwyhbunxavdsiqydgsfq.supabase.co/rest/v1/';
-            const supabaseKey = 'sb_publishable_zNferZ5qeghP6bpGhwOZJA_hoQLNlBt';
-            const _supabase = supabase.createClient(supabaseUrl, supabaseKey);
-            const products = [
-              {
-                id: "tradicional",
-                name: "Brigadeiro Tradicional",
-                description: "O clássico, sem erro.",
-                price: 3.5,
-              },
-              {
-                id: "nozes",
-                name: "Brigadeiro de Nozes",
-                description: "Sabor requintado e ótimo acompanhante de um expresso.",
-                price: 3.5,
-              },
-              {
-                id: "oreo",
-                name: "Brigadeiro de Oreo",
-                description: "O favorito da galera.",
-                price: 3.5,
-              },
-              {
-                id: "churros",
-                name: "Brigadeiro de Churros",
-                description: "Delicioso brigadeiro com doce de leite.",
-                price: 3.5,
-              },
-              {
-                id: "caixa4",
-                name: "Caixa com Quatro Brigadeiros",
-                description:
-                  "Contém um tradicional, um de nozes, um de churros e um de Oreo.",
-                price: 12.0,
-              },
-            ];
-
-            const whatsappNumber = "5561981767727";
-            const paymentEndpoint = "/.netlify/functions/create-payment";
-
-            /* =========================
-             ELEMENTOS
-          ========================= */
-
-            const grid = document.getElementById("productsGrid");
-
-            const cartButton = document.getElementById("cartButton");
-            const cartCount = document.getElementById("cartCount");
-            const cartModal = document.getElementById("cartModal");
-            const cartItems = document.getElementById("cartItems");
-            const cartTotal = document.getElementById("cartTotal");
-            const checkoutCartBtn = document.getElementById("checkoutCartBtn");
-
-            const modal = document.getElementById("orderModal");
-            const form = document.getElementById("orderForm");
-            const checkoutItems = document.getElementById("checkoutItems");
-            const orderTotal = document.getElementById("orderTotal");
-
-            const addressGroup = document.getElementById("addressGroup");
-            const addressInput = document.getElementById("address");
-
-            const onlinePaymentBox = document.getElementById("onlinePaymentBox");
-
-            const finalizeBtn = document.getElementById("finalizeBtn");
-
-            const checkoutNote = document.getElementById("checkoutNote");
-
-            const customerNameInput = document.getElementById("customerName");
-
-            const phoneInput = document.getElementById("phone");
-
-            const dateInput = document.getElementById("date");
-
-            /* =========================
-             CARRINHO
-          ========================= */
-
-            let cart = [];
-
-            try {
-              const savedCart = JSON.parse(
-                localStorage.getItem("doceGracaCart") || "[]",
-              );
-
-              if (Array.isArray(savedCart)) {
-                cart = savedCart.filter(
-                  (item) =>
-                    products.some((product) => product.id === item.id) &&
-                    Number.isInteger(item.quantity) &&
-                    item.quantity > 0,
-                );
-              }
-            } catch {
-              cart = [];
-            }
-
-            function saveCart() {
-              localStorage.setItem("doceGracaCart", JSON.stringify(cart));
-            }
-
-            function getProduct(id) {
-              return products.find((product) => product.id === id);
-            }
-
-            function money(value) {
-              return value.toLocaleString("pt-BR", {
-                style: "currency",
-                currency: "BRL",
-              });
-            }
-
-            function cartItemCount() {
-              return cart.reduce((sum, item) => sum + item.quantity, 0);
-            }
-
-            function cartValue() {
-              return cart.reduce((sum, item) => {
-                const product = getProduct(item.id);
-
-                return product ? sum + product.price * item.quantity : sum;
-              }, 0);
-            }
-
-            function addToCart(productId) {
-              const existing = cart.find((item) => item.id === productId);
-
-              if (existing) {
-                existing.quantity += 1;
-              } else {
-                cart.push({
-                  id: productId,
-                  quantity: 1,
-                });
-              }
-
-              saveCart();
-              renderCart();
-            }
-
-            function changeCartQuantity(productId, change) {
-              const item = cart.find((cartItem) => cartItem.id === productId);
-
-              if (!item) return;
-
-              item.quantity += change;
-
-              if (item.quantity <= 0) {
-                cart = cart.filter((cartItem) => cartItem.id !== productId);
-              }
-
-              saveCart();
-              renderCart();
-            }
-
-            function removeFromCart(productId) {
-              cart = cart.filter((item) => item.id !== productId);
-
-              saveCart();
-              renderCart();
-            }
-
-            function renderCart() {
-              const count = cartItemCount();
-              const total = cartValue();
-
-              cartCount.textContent = count;
-              cartButton.hidden = count === 0;
-              cartTotal.textContent = money(total);
-              orderTotal.textContent = money(total);
-
-              cartItems.innerHTML = "";
-              checkoutItems.innerHTML = "";
-
-              if (cart.length === 0) {
-                cartItems.innerHTML = `
-                <div class="cart-empty">
-                  Seu carrinho está vazio.
-                </div>
-              `;
-
-                checkoutCartBtn.disabled = true;
-                return;
-              }
-
-              checkoutCartBtn.disabled = false;
-
-              cart.forEach((item) => {
-                const product = getProduct(item.id);
-
-                if (!product) return;
-
-                const lineTotal = product.price * item.quantity;
-
-                const cartRow = document.createElement("div");
-
-                cartRow.className = "cart-item";
-
-                cartRow.innerHTML = `
-                <div class="cart-item-info">
-                  <strong class="cart-item-name">
-                    ${product.name}
-                  </strong>
-
-                  <span class="cart-item-price">
-                    ${money(product.price)} cada
-                  </span>
-                </div>
-
-                <div class="cart-item-actions">
-                  <button
-                    type="button"
-                    class="qty-btn"
-                    data-cart-action="decrease"
-                    data-product-id="${product.id}"
-                    aria-label="Diminuir quantidade"
-                  >
-                    −
-                  </button>
-
-                  <span class="cart-qty">
-                    ${item.quantity}
-                  </span>
-
-                  <button
-                    type="button"
-                    class="qty-btn"
-                    data-cart-action="increase"
-                    data-product-id="${product.id}"
-                    aria-label="Aumentar quantidade"
-                  >
-                    +
-                  </button>
-
-                  <button
-                    type="button"
-                    class="remove-item-btn"
-                    data-cart-action="remove"
-                    data-product-id="${product.id}"
-                  >
-                    Remover
-                  </button>
-                </div>
-              `;
-
-                cartItems.appendChild(cartRow);
-
-                const summaryRow = document.createElement("div");
-
-                summaryRow.className = "checkout-summary-row";
-
-                summaryRow.innerHTML = `
-                <span>
-                  ${item.quantity}× ${product.name}
-                </span>
-
-                <strong>
-                  ${money(lineTotal)}
-                </strong>
-              `;
-
-                checkoutItems.appendChild(summaryRow);
-              });
-            }
-
-            /* =========================
-             PRODUTOS
-          ========================= */
-
-            function renderProducts() {
-              grid.innerHTML = "";
-
-              products.forEach((product) => {
-                const card = document.createElement("article");
-
-                card.className = "product-card";
-
-                card.innerHTML = `
-                <div class="product-top">
-                  <h3>${product.name}</h3>
-                  <div class="price">
-                    ${money(product.price)}
-                  </div>
-                </div>
-
-                <p>${product.description}</p>
-
-                <div class="product-footer">
-                  <button
-                    class="order-btn"
-                    type="button"
-                    data-product-id="${product.id}"
-                  >
-                    Adicionar ao carrinho
-                  </button>
-                </div>
-              `;
-
-                grid.appendChild(card);
-              });
-            }
-
-            /* =========================
-             MODAIS
-          ========================= */
-
-            function openCartModal() {
-              renderCart();
-
-              cartModal.classList.add("open");
-              cartModal.setAttribute("aria-hidden", "false");
-
-              document.body.style.overflow = "hidden";
-            }
-
-            function closeCartModal() {
-              cartModal.classList.remove("open");
-              cartModal.setAttribute("aria-hidden", "true");
-
-              document.body.style.overflow = "";
-            }
-
-            function openOrderModal() {
-              if (cart.length === 0) return;
-
-              renderCart();
-              closeCartModal();
-
-              modal.classList.add("open");
-              modal.setAttribute("aria-hidden", "false");
-
-              document.body.style.overflow = "hidden";
-            }
-
-            function closeOrderModal() {
-              modal.classList.remove("open");
-              modal.setAttribute("aria-hidden", "true");
-
-              document.body.style.overflow = "";
-            }
-
-            function backToCart() {
-              closeOrderModal();
-              openCartModal();
-            }
-
-            /* =========================
-             VALIDAÇÃO
-          ========================= */
-
-            function todayLocalISO() {
-              const now = new Date();
-              const year = now.getFullYear();
-              const month = String(now.getMonth() + 1).padStart(2, "0");
-              const day = String(now.getDate()).padStart(2, "0");
-
-              return `${year}-${month}-${day}`;
-            }
-
-            function isRealDate(value) {
-              if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-                return false;
-              }
-
-              const [year, month, day] = value.split("-").map(Number);
-
-              const date = new Date(Date.UTC(year, month - 1, day));
-
-              return (
-                date.getUTCFullYear() === year &&
-                date.getUTCMonth() === month - 1 &&
-                date.getUTCDate() === day
-              );
-            }
-
-            function phoneDigits(value) {
-              return value.replace(/\D/g, "").slice(0, 11);
-            }
-
-            function formatBrazilianPhone(value) {
-              const digits = phoneDigits(value);
-
-              if (digits.length <= 2) {
-                return digits.length ? `(${digits}` : "";
-              }
-
-              const ddd = digits.slice(0, 2);
-              const number = digits.slice(2);
-
-              if (number.length <= 4) {
-                return `(${ddd}) ${number}`;
-              }
-
-              if (number.length <= 8) {
-                return `(${ddd}) ${number.slice(0, 4)}-${number.slice(4)}`;
-              }
-
-              return `(${ddd}) ${number.slice(0, 5)}-${number.slice(5, 9)}`;
-            }
-
-            function isValidBrazilianPhone(value) {
-              const digits = phoneDigits(value);
-
-              if (!/^[1-9]\d{9,10}$/.test(digits)) {
-                return false;
-              }
-
-              const subscriber = digits.slice(2);
-
-              if (digits.length === 11) {
-                return subscriber.startsWith("9");
-              }
-
-              return /^[2-5]/.test(subscriber);
-            }
-
-            function validateCustomerFields() {
-              let valid = true;
-
-              const name = customerNameInput.value.trim();
-
-              const onlyLettersAndSpaces = /^[\p{L}\s]+$/u.test(name);
-
-              customerNameInput.classList.remove("is-invalid");
-              phoneInput.classList.remove("is-invalid");
-              dateInput.classList.remove("is-invalid");
-
-              customerNameInput.setCustomValidity("");
-              phoneInput.setCustomValidity("");
-              dateInput.setCustomValidity("");
-
-              if (name.length < 2 || !onlyLettersAndSpaces) {
-                customerNameInput.setCustomValidity(
-                  "Informe seu nome usando somente letras e espaços.",
-                );
-
-                customerNameInput.classList.add("is-invalid");
-
-                valid = false;
-              }
-
-              if (!isValidBrazilianPhone(phoneInput.value)) {
-                phoneInput.setCustomValidity(
-                  "Informe um telefone brasileiro válido com DDD e 10 ou 11 dígitos.",
-                );
-
-                phoneInput.classList.add("is-invalid");
-
-                valid = false;
-              }
-
-              const desiredDate = dateInput.value;
-
-              if (!isRealDate(desiredDate) || desiredDate < todayLocalISO()) {
-                dateInput.setCustomValidity(
-                  "Escolha uma data válida a partir de hoje.",
-                );
-
-                dateInput.classList.add("is-invalid");
-
-                valid = false;
-              }
-
-              if (!valid) {
-                form.reportValidity();
-              }
-
-              return valid;
-            }
-
-            /* =========================
-             EVENTOS DO CARDÁPIO
-          ========================= */
-
-            grid.addEventListener("click", (event) => {
-              const button = event.target.closest("[data-product-id]");
-
-              if (!button) return;
-
-              const productId = button.dataset.productId;
-
-              addToCart(productId);
-
-              const originalText = button.textContent;
-
-              button.textContent = "Adicionado ✓";
-              button.classList.add("added-feedback");
-
-              setTimeout(() => {
-                button.textContent = "Adicionar ao carrinho";
-
-                button.classList.remove("added-feedback");
-              }, 850);
-            });
-
-            cartButton.addEventListener("click", openCartModal);
-
-            cartItems.addEventListener("click", (event) => {
-              const button = event.target.closest("[data-cart-action]");
-
-              if (!button) return;
-
-              const productId = button.dataset.productId;
-
-              const action = button.dataset.cartAction;
-
-              if (action === "increase") {
-                changeCartQuantity(productId, 1);
-              }
-
-              if (action === "decrease") {
-                changeCartQuantity(productId, -1);
-              }
-
-              if (action === "remove") {
-                removeFromCart(productId);
-              }
-            });
-
-            document
-              .getElementById("closeCartModal")
-              .addEventListener("click", closeCartModal);
-
-            document
-              .getElementById("continueShoppingBtn")
-              .addEventListener("click", closeCartModal);
-
-            checkoutCartBtn.addEventListener("click", openOrderModal);
-
-            document
-              .getElementById("closeModal")
-              .addEventListener("click", closeOrderModal);
-
-            document
-              .getElementById("backToCart")
-              .addEventListener("click", backToCart);
-
-            cartModal.addEventListener("click", (event) => {
-              if (event.target === cartModal) {
-                closeCartModal();
-              }
-            });
-
-            modal.addEventListener("click", (event) => {
-              if (event.target === modal) {
-                closeOrderModal();
-              }
-            });
-
-            document.addEventListener("keydown", (event) => {
-              if (event.key !== "Escape") return;
-
-              if (modal.classList.contains("open")) {
-                closeOrderModal();
-                return;
-              }
-
-              if (cartModal.classList.contains("open")) {
-                closeCartModal();
-              }
-            });
-
-            /* =========================
-             VALIDAÇÃO EM TEMPO REAL
-          ========================= */
-
-            dateInput.min = todayLocalISO();
-
-            customerNameInput.addEventListener("input", () => {
-              customerNameInput.value = customerNameInput.value
-                .replace(/[^\p{L}\s]/gu, "")
-                .replace(/\s{2,}/g, " ")
-                .slice(0, 70);
-
-              customerNameInput.setCustomValidity("");
-              customerNameInput.classList.remove("is-invalid");
-            });
-
-            phoneInput.addEventListener("input", () => {
-              phoneInput.value = formatBrazilianPhone(phoneInput.value);
-
-              phoneInput.setCustomValidity("");
-              phoneInput.classList.remove("is-invalid");
-            });
-
-            dateInput.addEventListener("change", () => {
-              dateInput.setCustomValidity("");
-              dateInput.classList.remove("is-invalid");
-
-              if (!isRealDate(dateInput.value) || dateInput.value < todayLocalISO()) {
-                dateInput.setCustomValidity(
-                  "Escolha uma data válida a partir de hoje.",
-                );
-
-                dateInput.classList.add("is-invalid");
-
-                dateInput.reportValidity();
-              }
-            });
-
-            /* =========================
-             RETIRADA / DELIVERY
-          ========================= */
-
-            document
-              .querySelectorAll('input[name="deliveryType"]')
-              .forEach((input) => {
-                input.addEventListener("change", () => {
-                  const type = document.querySelector(
-                    'input[name="deliveryType"]:checked',
-                  ).value;
-
-                  const isDelivery = type === "Delivery";
-
-                  addressGroup.style.display = isDelivery ? "block" : "none";
-
-                  addressInput.required = isDelivery;
-
-                  if (!isDelivery) {
-                    addressInput.value = "";
-                    document.getElementById("reference").value = "";
-                  }
-                });
-              });
-
-            /* =========================
-             WHATSAPP / PAGAMENTO
-          ========================= */
-            document
-              .querySelectorAll('input[name="checkoutType"]')
-              .forEach((input) => {
-                input.addEventListener("change", () => {
-                  const checkoutType = document.querySelector(
-                    'input[name="checkoutType"]:checked',
-                  ).value;
-
-                  if (checkoutType === "Online") {
-                    onlinePaymentBox.style.display = "block";
-
-                    finalizeBtn.textContent = "Ir para pagamento";
-
-                    checkoutNote.textContent =
-                      "O pagamento será processado em ambiente seguro.";
-                  } else {
-                    onlinePaymentBox.style.display = "none";
-
-                    finalizeBtn.textContent = "Enviar pedido pelo WhatsApp";
-
-                    checkoutNote.textContent =
-                      "Após o envio, confirme a disponibilidade com a loja.";
-                  }
-                });
-              });
-            /* =========================
-             FINALIZAR PEDIDO
-          ========================= */
-
-            form.addEventListener("submit", async (event) => {
-              event.preventDefault();
-
-              if (cart.length === 0) {
-                openCartModal();
-                return;
-              }
-
-              if (!validateCustomerFields()) {
-                return;
-              }
-
-              const deliveryType = document.querySelector(
-                'input[name="deliveryType"]:checked',
-              ).value;
-
-              const checkoutType = document.querySelector(
-                'input[name="checkoutType"]:checked',
-              ).value;
-
-              const name = customerNameInput.value.trim();
-
-              const phone = phoneInput.value.trim();
-
-              const desiredDate = dateInput.value;
-
-              const address = document.getElementById("address").value.trim();
-
-              const reference = document.getElementById("reference").value.trim();
-
-              const notes = document.getElementById("notes").value.trim();
-
-              const total = cartValue();
-
-              const itemsText = cart
-                .map((item) => {
-                  const product = getProduct(item.id);
-
-                  const lineTotal = product.price * item.quantity;
-
-                  return (
-                    `• ${item.quantity}x ${product.name}` + ` — ${money(lineTotal)}`
-                  );
-                })
-                .join("\n");
-
-              let message = `Olá! Gostaria de fazer uma encomenda na Doce Graça.
-
-      *Produtos:*
-      ${itemsText}
-
-      *Total dos produtos:* ${money(total)}
-
-      *Forma de recebimento:* ${deliveryType}
-      *Nome:* ${name}
-      *Telefone:* ${phone}`;
-
-              const [year, month, day] = desiredDate.split("-");
-
-              message += `\n*Data desejada:* ${day}/${month}/${year}`;
-
-              if (deliveryType === "Delivery") {
-                message += `\n*Endereço:* ${address}`;
-
-                if (reference) {
-                  message += `\n*Referência:* ${reference}`;
-                }
-              }
-
-              if (notes) {
-                message += `\n*Observações:* ${notes}`;
-              }
-
-              message += "\n\nPode confirmar a disponibilidade e o valor final?";
-
-              if (checkoutType === "WhatsApp") {
-                const url =
-                  `https://wa.me/${whatsappNumber}` +
-                  `?text=${encodeURIComponent(message)}`;
-
-                window.open(url, "_blank");
-                return;
-              }
-
-             finalizeBtn.disabled = true;
-
-      finalizeBtn.textContent =
-        "Preparando pagamento...";
+      /* =========================
+       SUPABASE
+    ========================= */
+      const supabaseUrl = "https://lwyhbunxavdsiqydgsfq.supabase.co";
+      const supabaseKey = "sb_publishable_zNferZ5qeghP6bpGhwOZJA_hoQLNlBt";
+      const _supabase = supabase.createClient(supabaseUrl, supabaseKey);
+
+      /* =========================
+       PRODUTOS
+    ========================= */
+      const products = [
+        {
+          id: "tradicional",
+          name: "Brigadeiro Tradicional",
+          description: "O clássico, sem erro.",
+          price: 3.5,
+        },
+        {
+          id: "nozes",
+          name: "Brigadeiro de Nozes",
+          description: "Sabor requintado e ótimo acompanhante de um expresso.",
+          price: 3.5,
+        },
+        {
+          id: "oreo",
+          name: "Brigadeiro de Oreo",
+          description: "O favorito da galera.",
+          price: 3.5,
+        },
+        {
+          id: "churros",
+          name: "Brigadeiro de Churros",
+          description: "Delicioso brigadeiro com doce de leite.",
+          price: 3.5,
+        },
+        {
+          id: "caixa4",
+          name: "Caixa com Quatro Brigadeiros",
+          description:
+            "Contém um tradicional, um de nozes, um de churros e um de Oreo.",
+          price: 12.0,
+        },
+      ];
+
+      const whatsappNumber = "5561981767727";
+      const paymentEndpoint = "/.netlify/functions/create-payment";
+
+      /* =========================
+       ELEMENTOS
+    ========================= */
+
+      const grid = document.getElementById("productsGrid");
+
+      const cartButton = document.getElementById("cartButton");
+      const cartCount = document.getElementById("cartCount");
+      const cartModal = document.getElementById("cartModal");
+      const cartItems = document.getElementById("cartItems");
+      const cartTotal = document.getElementById("cartTotal");
+      const checkoutCartBtn = document.getElementById("checkoutCartBtn");
+
+      const modal = document.getElementById("orderModal");
+      const form = document.getElementById("orderForm");
+      const checkoutItems = document.getElementById("checkoutItems");
+      const orderTotal = document.getElementById("orderTotal");
+
+      const addressGroup = document.getElementById("addressGroup");
+      const addressInput = document.getElementById("address");
+
+      const onlinePaymentBox = document.getElementById("onlinePaymentBox");
+
+      const finalizeBtn = document.getElementById("finalizeBtn");
+
+      const checkoutNote = document.getElementById("checkoutNote");
+
+      const customerNameInput = document.getElementById("customerName");
+
+      const phoneInput = document.getElementById("phone");
+
+      const dateInput = document.getElementById("date");
+
+      /* =========================
+       CARRINHO
+    ========================= */
+
+      let cart = [];
 
       try {
-
-        const response =
-          await fetch(
-            paymentEndpoint,
-            {
-              method: "POST",
-
-              headers: {
-                "Content-Type":
-                  "application/json"
-              },
-
-              body: JSON.stringify({
-
-                items:
-                  cart.map(
-                    (item) => ({
-                      productId:
-                        item.id,
-
-                      quantity:
-                        item.quantity
-                    })
-                  ),
-
-                customer: {
-
-                  name: name,
-
-                  phone: phone,
-
-                  deliveryType:
-                    deliveryType,
-
-                  address:
-                    deliveryType ===
-                    "Delivery"
-                      ? address
-                      : "",
-
-                  reference:
-                    deliveryType ===
-                    "Delivery"
-                      ? reference
-                      : "",
-
-                  desiredDate:
-                    desiredDate,
-
-                  notes:
-                    notes
-                }
-              })
-            }
-          );
-
-        let data;
-
-        try {
-
-          data =
-            await response.json();
-
-        } catch {
-
-          throw new Error(
-            "O servidor retornou uma resposta inválida."
-          );
-        }
-
-        if (!response.ok) {
-
-          console.error(
-            "Erro retornado pelo servidor:",
-            data
-          );
-
-          throw new Error(
-            data.error ||
-            data.details ||
-            "Não foi possível iniciar o pagamento."
-          );
-        }
-
-        if (!data.init_point) {
-
-          throw new Error(
-            "O Mercado Pago não retornou o link de pagamento."
-          );
-        }
-
-        window.location.href =
-          data.init_point;
-
-      } catch (error) {
-
-        console.error(
-          "Erro no pagamento:",
-          error
+        const savedCart = JSON.parse(
+          localStorage.getItem("doceGracaCart") || "[]",
         );
 
-        alert(
-          "Erro ao iniciar o pagamento: " +
-          (
-            error.message ||
-            "erro desconhecido"
-          )
-        );
-
-        finalizeBtn.disabled =
-          false;
-
-        finalizeBtn.textContent =
-          "Ir para pagamento";
+        if (Array.isArray(savedCart)) {
+          cart = savedCart.filter(
+            (item) =>
+              products.some((product) => product.id === item.id) &&
+              Number.isInteger(item.quantity) &&
+              item.quantity > 0,
+          );
+        }
+      } catch {
+        cart = [];
       }
 
+      function saveCart() {
+        localStorage.setItem("doceGracaCart", JSON.stringify(cart));
+      }
+
+      function getProduct(id) {
+        return products.find((product) => product.id === id);
+      }
+
+      function money(value) {
+        return value.toLocaleString("pt-BR", {
+          style: "currency",
+          currency: "BRL",
+        });
+      }
+
+      function cartItemCount() {
+        return cart.reduce((sum, item) => sum + item.quantity, 0);
+      }
+
+      function cartValue() {
+        return cart.reduce((sum, item) => {
+          const product = getProduct(item.id);
+
+          return product ? sum + product.price * item.quantity : sum;
+        }, 0);
+      }
+
+      function addToCart(productId) {
+        const existing = cart.find((item) => item.id === productId);
+
+        if (existing) {
+          existing.quantity += 1;
+        } else {
+          cart.push({
+            id: productId,
+            quantity: 1,
+          });
+        }
+
+        saveCart();
+        renderCart();
+      }
+
+      function changeCartQuantity(productId, change) {
+        const item = cart.find((cartItem) => cartItem.id === productId);
+
+        if (!item) return;
+
+        item.quantity += change;
+
+        if (item.quantity <= 0) {
+          cart = cart.filter((cartItem) => cartItem.id !== productId);
+        }
+
+        saveCart();
+        renderCart();
+      }
+
+      function removeFromCart(productId) {
+        cart = cart.filter((item) => item.id !== productId);
+
+        saveCart();
+        renderCart();
+      }
+
+      function renderCart() {
+        const count = cartItemCount();
+        const total = cartValue();
+
+        cartCount.textContent = count;
+        cartButton.hidden = count === 0;
+        cartTotal.textContent = money(total);
+        orderTotal.textContent = money(total);
+
+        cartItems.innerHTML = "";
+        checkoutItems.innerHTML = "";
+
+        if (cart.length === 0) {
+          cartItems.innerHTML = `
+            <div class="cart-empty">
+              Seu carrinho está vazio.
+            </div>
+          `;
+
+          checkoutCartBtn.disabled = true;
+          return;
+        }
+
+        checkoutCartBtn.disabled = false;
+
+        cart.forEach((item) => {
+          const product = getProduct(item.id);
+
+          if (!product) return;
+
+          const lineTotal = product.price * item.quantity;
+
+          const cartRow = document.createElement("div");
+
+          cartRow.className = "cart-item";
+
+          cartRow.innerHTML = `
+            <div class="cart-item-info">
+              <strong class="cart-item-name">
+                ${product.name}
+              </strong>
+
+              <span class="cart-item-price">
+                ${money(product.price)} cada
+              </span>
+            </div>
+
+            <div class="cart-item-actions">
+              <button
+                type="button"
+                class="qty-btn"
+                data-cart-action="decrease"
+                data-product-id="${product.id}"
+                aria-label="Diminuir quantidade"
+              >
+                −
+              </button>
+
+              <span class="cart-qty">
+                ${item.quantity}
+              </span>
+
+              <button
+                type="button"
+                class="qty-btn"
+                data-cart-action="increase"
+                data-product-id="${product.id}"
+                aria-label="Aumentar quantidade"
+              >
+                +
+              </button>
+
+              <button
+                type="button"
+                class="remove-item-btn"
+                data-cart-action="remove"
+                data-product-id="${product.id}"
+              >
+                Remover
+              </button>
+            </div>
+          `;
+
+          cartItems.appendChild(cartRow);
+
+          const summaryRow = document.createElement("div");
+
+          summaryRow.className = "checkout-summary-row";
+
+          summaryRow.innerHTML = `
+            <span>
+              ${item.quantity}× ${product.name}
+            </span>
+
+            <strong>
+              ${money(lineTotal)}
+            </strong>
+          `;
+
+          checkoutItems.appendChild(summaryRow);
+        });
+      }
+
+      /* =========================
+       PRODUTOS
+    ========================= */
+
+      function renderProducts() {
+        grid.innerHTML = "";
+
+        products.forEach((product) => {
+          const card = document.createElement("article");
+
+          card.className = "product-card";
+
+          card.innerHTML = `
+            <div class="product-top">
+              <h3>${product.name}</h3>
+              <div class="price">
+                ${money(product.price)}
+              </div>
+            </div>
+
+            <p>${product.description}</p>
+
+            <div class="product-footer">
+              <button
+                class="order-btn"
+                type="button"
+                data-product-id="${product.id}"
+              >
+                Adicionar ao carrinho
+              </button>
+            </div>
+          `;
+
+          grid.appendChild(card);
+        });
+      }
+
+      /* =========================
+       MODAIS
+    ========================= */
+
+      function openCartModal() {
+        renderCart();
+
+        cartModal.classList.add("open");
+        cartModal.setAttribute("aria-hidden", "false");
+
+        document.body.style.overflow = "hidden";
+      }
+
+      function closeCartModal() {
+        cartModal.classList.remove("open");
+        cartModal.setAttribute("aria-hidden", "true");
+
+        document.body.style.overflow = "";
+      }
+
+      function openOrderModal() {
+        if (cart.length === 0) return;
+
+        renderCart();
+        closeCartModal();
+
+        modal.classList.add("open");
+        modal.setAttribute("aria-hidden", "false");
+
+        document.body.style.overflow = "hidden";
+      }
+
+      function closeOrderModal() {
+        modal.classList.remove("open");
+        modal.setAttribute("aria-hidden", "true");
+
+        document.body.style.overflow = "";
+      }
+
+      function backToCart() {
+        closeOrderModal();
+        openCartModal();
+      }
+
+      /* =========================
+       VALIDAÇÃO
+    ========================= */
+
+      function todayLocalISO() {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, "0");
+        const day = String(now.getDate()).padStart(2, "0");
+
+        return `${year}-${month}-${day}`;
+      }
+
+      function isRealDate(value) {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+          return false;
+        }
+
+        const [year, month, day] = value.split("-").map(Number);
+
+        const date = new Date(Date.UTC(year, month - 1, day));
+
+        return (
+          date.getUTCFullYear() === year &&
+          date.getUTCMonth() === month - 1 &&
+          date.getUTCDate() === day
+        );
+      }
+
+      function phoneDigits(value) {
+        return value.replace(/\D/g, "").slice(0, 11);
+      }
+
+      function formatBrazilianPhone(value) {
+        const digits = phoneDigits(value);
+
+        if (digits.length <= 2) {
+          return digits.length ? `(${digits}` : "";
+        }
+
+        const ddd = digits.slice(0, 2);
+        const number = digits.slice(2);
+
+        if (number.length <= 4) {
+          return `(${ddd}) ${number}`;
+        }
+
+        if (number.length <= 8) {
+          return `(${ddd}) ${number.slice(0, 4)}-${number.slice(4)}`;
+        }
+
+        return `(${ddd}) ${number.slice(0, 5)}-${number.slice(5, 9)}`;
+      }
+
+      function isValidBrazilianPhone(value) {
+        const digits = phoneDigits(value);
+
+        if (!/^[1-9]\d{9,10}$/.test(digits)) {
+          return false;
+        }
+
+        const subscriber = digits.slice(2);
+
+        if (digits.length === 11) {
+          return subscriber.startsWith("9");
+        }
+
+        return /^[2-5]/.test(subscriber);
+      }
+
+      function validateCustomerFields() {
+        let valid = true;
+
+        const name = customerNameInput.value.trim();
+
+        const onlyLettersAndSpaces = /^[\p{L}\s]+$/u.test(name);
+
+        customerNameInput.classList.remove("is-invalid");
+        phoneInput.classList.remove("is-invalid");
+        dateInput.classList.remove("is-invalid");
+
+        customerNameInput.setCustomValidity("");
+        phoneInput.setCustomValidity("");
+        dateInput.setCustomValidity("");
+
+        if (name.length < 2 || !onlyLettersAndSpaces) {
+          customerNameInput.setCustomValidity(
+            "Informe seu nome usando somente letras e espaços.",
+          );
+
+          customerNameInput.classList.add("is-invalid");
+
+          valid = false;
+        }
+
+        if (!isValidBrazilianPhone(phoneInput.value)) {
+          phoneInput.setCustomValidity(
+            "Informe um telefone brasileiro válido com DDD e 10 ou 11 dígitos.",
+          );
+
+          phoneInput.classList.add("is-invalid");
+
+          valid = false;
+        }
+
+        const desiredDate = dateInput.value;
+
+        if (!isRealDate(desiredDate) || desiredDate < todayLocalISO()) {
+          dateInput.setCustomValidity(
+            "Escolha uma data válida a partir de hoje.",
+          );
+
+          dateInput.classList.add("is-invalid");
+
+          valid = false;
+        }
+
+        if (!valid) {
+          form.reportValidity();
+        }
+
+        return valid;
+      }
+
+      /* =========================
+       EVENTOS DO CARDÁPIO
+    ========================= */
+
+      grid.addEventListener("click", (event) => {
+        const button = event.target.closest("[data-product-id]");
+
+        if (!button) return;
+
+        const productId = button.dataset.productId;
+
+        addToCart(productId);
+
+        const originalText = button.textContent;
+
+        button.textContent = "Adicionado ✓";
+        button.classList.add("added-feedback");
+
+        setTimeout(() => {
+          button.textContent = "Adicionar ao carrinho";
+
+          button.classList.remove("added-feedback");
+        }, 850);
       });
 
-            /* =========================
-             INICIAR
-          ========================= */
+      cartButton.addEventListener("click", openCartModal);
 
-            renderProducts();
-            renderCart();
+      cartItems.addEventListener("click", (event) => {
+        const button = event.target.closest("[data-cart-action]");
+
+        if (!button) return;
+
+        const productId = button.dataset.productId;
+
+        const action = button.dataset.cartAction;
+
+        if (action === "increase") {
+          changeCartQuantity(productId, 1);
+        }
+
+        if (action === "decrease") {
+          changeCartQuantity(productId, -1);
+        }
+
+        if (action === "remove") {
+          removeFromCart(productId);
+        }
+      });
+
+      document
+        .getElementById("closeCartModal")
+        .addEventListener("click", closeCartModal);
+
+      document
+        .getElementById("continueShoppingBtn")
+        .addEventListener("click", closeCartModal);
+
+      checkoutCartBtn.addEventListener("click", openOrderModal);
+
+      document
+        .getElementById("closeModal")
+        .addEventListener("click", closeOrderModal);
+
+      document
+        .getElementById("backToCart")
+        .addEventListener("click", backToCart);
+
+      cartModal.addEventListener("click", (event) => {
+        if (event.target === cartModal) {
+          closeCartModal();
+        }
+      });
+
+      modal.addEventListener("click", (event) => {
+        if (event.target === modal) {
+          closeOrderModal();
+        }
+      });
+
+      document.addEventListener("keydown", (event) => {
+        if (event.key !== "Escape") return;
+
+        if (modal.classList.contains("open")) {
+          closeOrderModal();
+          return;
+        }
+
+        if (cartModal.classList.contains("open")) {
+          closeCartModal();
+        }
+      });
+
+      /* =========================
+       VALIDAÇÃO EM TEMPO REAL
+    ========================= */
+
+      dateInput.min = todayLocalISO();
+
+      customerNameInput.addEventListener("input", () => {
+        customerNameInput.value = customerNameInput.value
+          .replace(/[^\p{L}\s]/gu, "")
+          .replace(/\s{2,}/g, " ")
+          .slice(0, 70);
+
+        customerNameInput.setCustomValidity("");
+        customerNameInput.classList.remove("is-invalid");
+      });
+
+      phoneInput.addEventListener("input", () => {
+        phoneInput.value = formatBrazilianPhone(phoneInput.value);
+
+        phoneInput.setCustomValidity("");
+        phoneInput.classList.remove("is-invalid");
+      });
+
+      dateInput.addEventListener("change", () => {
+        dateInput.setCustomValidity("");
+        dateInput.classList.remove("is-invalid");
+
+        if (!isRealDate(dateInput.value) || dateInput.value < todayLocalISO()) {
+          dateInput.setCustomValidity(
+            "Escolha uma data válida a partir de hoje.",
+          );
+
+          dateInput.classList.add("is-invalid");
+
+          dateInput.reportValidity();
+        }
+      });
+
+      /* =========================
+       RETIRADA / DELIVERY
+    ========================= */
+
+      document
+        .querySelectorAll('input[name="deliveryType"]')
+        .forEach((input) => {
+          input.addEventListener("change", () => {
+            const type = document.querySelector(
+              'input[name="deliveryType"]:checked',
+            ).value;
+
+            const isDelivery = type === "Delivery";
+
+            addressGroup.style.display = isDelivery ? "block" : "none";
+
+            addressInput.required = isDelivery;
+
+            if (!isDelivery) {
+              addressInput.value = "";
+              document.getElementById("reference").value = "";
+            }
+          });
+        });
+
+      /* =========================
+       WHATSAPP / PAGAMENTO
+    ========================= */
+      document
+        .querySelectorAll('input[name="checkoutType"]')
+        .forEach((input) => {
+          input.addEventListener("change", () => {
+            const checkoutType = document.querySelector(
+              'input[name="checkoutType"]:checked',
+            ).value;
+
+            if (checkoutType === "Online") {
+              onlinePaymentBox.style.display = "block";
+
+              finalizeBtn.textContent = "Ir para pagamento";
+
+              checkoutNote.textContent =
+                "O pagamento será processado em ambiente seguro.";
+            } else {
+              onlinePaymentBox.style.display = "none";
+
+              finalizeBtn.textContent = "Enviar pedido pelo WhatsApp";
+
+              checkoutNote.textContent =
+                "Após o envio, confirme a disponibilidade com a loja.";
+            }
+          });
+        });
+
+      /* =========================
+       SALVAR PEDIDO NO SUPABASE
+    ========================= */
+
+      async function saveOrderToSupabase({
+        cartItems: itemsList,
+        total,
+        customer,
+      }) {
+        const orderPayload = {
+          customer_name: customer.name,
+          phone: customer.phone,
+          delivery_type: customer.deliveryType,
+          address: customer.address || null,
+          reference: customer.reference || null,
+          desired_date: customer.desiredDate,
+          notes: customer.notes || null,
+          checkout_type: customer.checkoutType,
+          items: itemsList.map((item) => {
+            const product = getProduct(item.id);
+
+            return {
+              id: item.id,
+              name: product ? product.name : item.id,
+              quantity: item.quantity,
+              unit_price: product ? product.price : null,
+            };
+          }),
+          total,
+        };
+
+        const { data, error } = await _supabase
+          .from("pedidos")
+          .insert([orderPayload])
+          .select()
+          .single();
+
+        if (error) {
+          console.error("Erro ao salvar pedido no Supabase:", error);
+          return null;
+        }
+
+        return data;
+      }
+
+      /* =========================
+       FINALIZAR PEDIDO
+    ========================= */
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+
+        if (cart.length === 0) {
+          openCartModal();
+          return;
+        }
+
+        if (!validateCustomerFields()) {
+          return;
+        }
+
+        const deliveryType = document.querySelector(
+          'input[name="deliveryType"]:checked',
+        ).value;
+
+        const checkoutType = document.querySelector(
+          'input[name="checkoutType"]:checked',
+        ).value;
+
+        const name = customerNameInput.value.trim();
+
+        const phone = phoneInput.value.trim();
+
+        const desiredDate = dateInput.value;
+
+        const address = document.getElementById("address").value.trim();
+
+        const reference = document.getElementById("reference").value.trim();
+
+        const notes = document.getElementById("notes").value.trim();
+
+        const total = cartValue();
+
+        const itemsText = cart
+          .map((item) => {
+            const product = getProduct(item.id);
+
+            const lineTotal = product.price * item.quantity;
+
+            return (
+              `• ${item.quantity}x ${product.name}` + ` — ${money(lineTotal)}`
+            );
+          })
+          .join("\n");
+
+        let message = `Olá! Gostaria de fazer uma encomenda na Doce Graça.
+
+*Produtos:*
+${itemsText}
+
+*Total dos produtos:* ${money(total)}
+
+*Forma de recebimento:* ${deliveryType}
+*Nome:* ${name}
+*Telefone:* ${phone}`;
+
+        const [year, month, day] = desiredDate.split("-");
+
+        message += `\n*Data desejada:* ${day}/${month}/${year}`;
+
+        if (deliveryType === "Delivery") {
+          message += `\n*Endereço:* ${address}`;
+
+          if (reference) {
+            message += `\n*Referência:* ${reference}`;
+          }
+        }
+
+        if (notes) {
+          message += `\n*Observações:* ${notes}`;
+        }
+
+        message += "\n\nPode confirmar a disponibilidade e o valor final?";
+
+        const customerData = {
+          name,
+          phone,
+          deliveryType,
+          address: deliveryType === "Delivery" ? address : "",
+          reference: deliveryType === "Delivery" ? reference : "",
+          desiredDate,
+          notes,
+          checkoutType,
+        };
+
+        if (checkoutType === "WhatsApp") {
+          // Salva o pedido no Supabase sem bloquear o envio pro WhatsApp
+          saveOrderToSupabase({
+            cartItems: cart,
+            total,
+            customer: customerData,
+          });
+
+          const url =
+            `https://wa.me/${whatsappNumber}` +
+            `?text=${encodeURIComponent(message)}`;
+
+          window.open(url, "_blank");
+          return;
+        }
+
+        finalizeBtn.disabled = true;
+        finalizeBtn.textContent = "Preparando pagamento...";
+
+        try {
+          // Aqui aguardamos o registro no Supabase antes de seguir
+          // pro pagamento, pra garantir que o pedido ficou salvo.
+          await saveOrderToSupabase({
+            cartItems: cart,
+            total,
+            customer: customerData,
+          });
+
+          const response = await fetch(paymentEndpoint, {
+            method: "POST",
+
+            headers: {
+              "Content-Type": "application/json",
+            },
+
+            body: JSON.stringify({
+              items: cart.map((item) => ({
+                productId: item.id,
+                quantity: item.quantity,
+              })),
+
+              customer: {
+                name: name,
+                phone: phone,
+                deliveryType: deliveryType,
+                address: deliveryType === "Delivery" ? address : "",
+                reference: deliveryType === "Delivery" ? reference : "",
+                desiredDate: desiredDate,
+                notes: notes,
+              },
+            }),
+          });
+
+          let data;
+
+          try {
+            data = await response.json();
+          } catch {
+            throw new Error("O servidor retornou uma resposta inválida.");
+          }
+
+          if (!response.ok) {
+            console.error("Erro retornado pelo servidor:", data);
+
+            throw new Error(
+              data.error ||
+                data.details ||
+                "Não foi possível iniciar o pagamento.",
+            );
+          }
+
+          if (!data.init_point) {
+            throw new Error(
+              "O Mercado Pago não retornou o link de pagamento.",
+            );
+          }
+
+          window.location.href = data.init_point;
+        } catch (error) {
+          console.error("Erro no pagamento:", error);
+
+          alert(
+            "Erro ao iniciar o pagamento: " +
+              (error.message || "erro desconhecido"),
+          );
+
+          finalizeBtn.disabled = false;
+          finalizeBtn.textContent = "Ir para pagamento";
+        }
+      });
+
+      /* =========================
+       INICIAR
+    ========================= */
+
+      renderProducts();
+      renderCart();
     </script>
   </body>
 </html>
