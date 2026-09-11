@@ -2263,18 +2263,16 @@
           total,
         };
 
-        const { data, error } = await _supabase
+        const { error } = await _supabase
           .from("pedidos")
-          .insert([orderPayload])
-          .select()
-          .single();
+          .insert([orderPayload]);
 
         if (error) {
           console.error("Erro ao salvar pedido no Supabase:", error);
           return null;
         }
 
-        return data;
+        return true;
       }
 
       /* =========================
