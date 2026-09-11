@@ -3,10 +3,10 @@ const { MercadoPagoConfig, Preference } = require("mercadopago");
 // Mantém os produtos e preços no servidor — nunca confie no preço
 // vindo do navegador, para evitar que alguém manipule o valor pago.
 const PRODUCTS = {
-  tradicional: { name: "Brigadeiro Tradicional", price: 3.5 },
-  nozes: { name: "Brigadeiro de Nozes", price: 3.5 },
-  oreo: { name: "Brigadeiro de Oreo", price: 3.5 },
-  churros: { name: "Brigadeiro de Churros", price: 3.5 },
+  tradicional: { name: "Brigadeiro Tradicional", price: 4.0 },
+  nozes: { name: "Brigadeiro de Nozes", price: 4.0 },
+  oreo: { name: "Brigadeiro de Oreo", price: 4.0 },
+  churros: { name: "Brigadeiro de Churros", price: 4.0 },
   caixa4: { name: "Caixa com Quatro Brigadeiros", price: 12.0 },
 };
 
